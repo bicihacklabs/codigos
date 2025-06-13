@@ -1,0 +1,309 @@
+<div style="text-align: justify;">
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.exp&amp;signed_in=true&amp;libraries=places"></script>
+  
+ <script type='text/javascript' src='https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js'></script>
+
+<!-- BHL Edited JavaScript -->
+
+
+ <!-- Autocomplete Section-->
+
+ <script type="text/javascript">
+  function initialize() {
+   var input = document.getElementById('Origin');
+   var options = {
+    componentRestrictions: {
+     country: 'mx'
+    }
+   };
+
+   new google.maps.places.Autocomplete(input, options);
+  }
+
+  google.maps.event.addDomListener(window, 'load', initialize);
+ </script>
+
+ <script type="text/javascript">
+  function initialize() {
+   var input = document.getElementById('Destination');
+   var options = {
+    componentRestrictions: {
+     country: 'mx'
+    }
+   };
+
+   new google.maps.places.Autocomplete(input, options);
+  }
+
+  google.maps.event.addDomListener(window, 'load', initialize);
+ </script>
+
+ <!-- Autocomplete End-->
+
+ <!-- Calculate Distance-->
+
+
+ <script>
+  var map;
+  var geocoder;
+  var bounds = new google.maps.LatLngBounds();
+  var markersArray = [];
+
+  var origin1 = '19.2977754,-99.0526046';  
+  var destinationA = 'BiciHackLABS';
+  var distance = 0
+  
+  var originIcon = 'https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=Recepción|C1981A|000000';
+  var destinationIcon = 'https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=Entrega|C1981A|000000';
+  
+
+  /* //first get the value of the radio button
+var GetSize = document.getElementsByName('sizeRadio');
+
+for (var i = 0, length = radios.length; i < length; i++) {
+ if (radios[i].checked) {
+  // do whatever you want with the checked radio
+  alert(radios[i].value);
+
+  // only one radio can be logically checked, don't check the rest
+  break;
+ }
+} */
+
+
+  function initializeDistCalc() {
+
+
+   var opts = {
+    center: new google.maps.LatLng(19.2977754,-99.0526046),
+    zoom: 13,
+    mapTypeId: google.maps.MapTypeId.TERRAIN,
+    fullscreenControl: true
+   };
+   map = new google.maps.Map(document.getElementById('map-canvas'), opts);
+
+  var trafficLayer = new google.maps.TrafficLayer();
+  trafficLayer.setMap(map);
+  var transitLayer = new google.maps.TransitLayer();
+  transitLayer.setMap(map);
+  var bikeLayer = new google.maps.BicyclingLayer();
+  bikeLayer.setMap(map);
+  geocoder = new google.maps.Geocoder();
+
+  }
+
+  function calculateDistances() {
+   var service = new google.maps.DistanceMatrixService();
+   var home = '19.2977754,-99.0526046';
+   var origin1 = document.getElementById('Origin').value;
+   var destinationA = document.getElementById('Destination').value;
+   var homeFinish = '19.2977754,-99.0526046';
+   var Weight = document.getElementById('Weight').value;
+
+   if (!$("input[name='dest_type']:checked").val()) {
+    alert('Faltan algunos datos, seleccione una de las opciones disponibles.');
+   } else {
+
+
+
+
+    if (document.getElementById('TARIFA1').checked) {
+     var size = 1.5;
+    } else if (document.getElementById('TARIFA2').checked) {
+     var size = 2.0;
+    } else if (document.getElementById('TARIFA3').checked) {
+     var size = 2.5;
+    } else if (document.getElementById('TARIFA4').checked) {
+     var size = 3.0;
+    }
+
+
+
+
+    service.getDistanceMatrix({
+     origins: [origin1,],
+     destinations: [destinationA,],
+     
+     travelMode: google.maps.TravelMode.BICYCLING,
+     unitSystem: google.maps.UnitSystem.METRIC,
+     avoidHighways: false,
+     avoidTolls: false
+    }, callback);
+   }
+  }
+
+  function callback(response, status) {
+
+
+
+   if (status != google.maps.DistanceMatrixStatus.OK) {
+    alert('Error was: ' + status);
+   } else {
+    var origins = response.originAddresses;
+    var destinations = response.destinationAddresses;
+    var distance = 0;
+    
+    var outputDiv = document.getElementById('outputDiv');
+    outputDiv.innerHTML = '';
+    deleteOverlays();
+
+    for (var i = 0; i < origins.length; i++) {
+     var results = response.rows[i].elements;
+
+     addMarker(origins[i], false);
+     for (var j = 0; j < results.length; j++) {
+      addMarker(destinations[j], true);
+      var raw = ((size.value) * (results[j].duration.value) / 60)
+
+      if (raw < 1) {
+       //alert('its less than 55' + raw);
+       var price = 2;
+      } else {
+       var price = Math.ceil(raw);
+
+       //alert('the price is ' + price);
+      }
+
+      //alert(raw);
+
+distance = (distance + price);
+
+      //distance.push(price);
+//alert(distance);
+
+      //This is the Bit that prints the results to the screen.
+      //Redundant code below. Modified to just output the time.
+      //outputDiv.innerHTML += origins[i] + ' to ' + destinations[j] + ': ' + results[j].distance.text + ' in ' + results[j].duration.text + '<br>';
+      //outputDiv.innerHTML += origins[i] + ' to ' + destinations[j] + ': ' + results[j].distance.text + ' in ' + results[j].duration.text + '<br>' + (Weight.value);
+      
+
+
+     }
+    }
+    outputDiv.innerHTML += '<div class="alert alert-success" role="alert"> No olvide hidratar al mensajero. Pago en efectivo, a contraentrega y con cambio: MXN $' + (distance) + '</div>';
+    
+   }
+  }
+
+  function addMarker(location, isDestination) {
+   var icon;
+   if (isDestination) {
+    icon = destinationIcon;
+   } else {
+    icon = originIcon;
+   }
+   geocoder.geocode({
+    'address': location
+   }, function(results, status) {
+    if (status == google.maps.GeocoderStatus.OK) {
+     bounds.extend(results[0].geometry.location);
+     map.fitBounds(bounds);
+     var marker = new google.maps.Marker({
+      map: map,
+      position: results[0].geometry.location,
+      icon: icon
+     });
+     markersArray.push(marker);
+    } else {
+     alert('La ruta esta no disponible por: ' + status);
+    }
+   });
+  }
+ 
+  function deleteOverlays() {
+   for (var i = 0; i < markersArray.length; i++) {
+    markersArray[i].setMap(null);
+   }
+   markersArray = [];
+  }
+
+  google.maps.event.addDomListener(window, 'load', initializeDistCalc);
+
+   
+
+   <!-- END Calculate Distance-->
+ </script>
+
+
+ <script type='text/javascript'>
+  //<![CDATA[ 
+  $(window).load(function() {
+   $('input[name="dest_type"]').on('change', function() {
+
+    $('input[id="size"]').val($(this).val());
+    //   $('input[type="text"]').val('');
+
+
+   });
+  }); //]]>
+ </script>
+ <div class="col-md-12">    
+  <div class="page-header">
+  <h1><small>  TAXI/CYCLE/calculator</small></h1>
+</div>
+<div class="container-fluid">
+  <div class="row">
+   <div class="col-md-4">
+    <div id="inputs">
+     <form name="test">
+     <h4>Para calcular el precio de un envío ingresa los siguientes datos:</h4>
+
+      <h4><span style="font-size: x-small;">LUGAR DE RECEPCIÓN: (Calle,Numero int/exterior,Colonia,Código Postal.)</span></h4>
+      <input type="TEXT" id="Origin" name="Pickup" style="width: 100%;" />
+      <h4><span style="font-size: x-small;">LUGAR DE ENTREGA: (Calle,Numero int/exterior,Colonia,Código Postal.)</span></h4>
+      <input type="TEXT" id="Destination" name="DropOff" style="width: 100%;" />
+      <h4>Los datos proporcionados se utilizan para el trazo de la ruta más rápida y segura para sus envíos y nuestros mensajeros.
+        <input type="hidden" id="Weight" name="Weight" style="width: 40%;" />
+      <h4><span style="font-size: small;">Selecciona tu tipo de viaje:</span></h4>
+      <div>
+       <input name="dest_type" id="TARIFA1" value="1.5" type="radio" />
+       <label for="radio3">LOCAL: Socios y Afiliados (agendados al menos 8 horas antes).</label>
+       <br />
+       <input name="dest_type" id="TARIFA2" value="2.0" type="radio" />
+       <label for="radio4">URGENTE: y Para Ayer.</label>
+       <br />
+       <input name="dest_type" id="TARIFA3" value="2.5" type="radio" />
+       <label for="radio5">MÚLTIPLE: Envíos y encomiendas repartidos hasta en 5 puntos.
+       <br />
+       <input name="dest_type" id="TARIFA4" value="3.0" type="radio" />
+       <label for="radio5">ESPECIAL: Cualquier combinación de las anteriores, fuera de horario o días festivos. (sujeto a disponibilidad)
+      <br />
+      <h4><span style="font-size: small;">Nuestros servicios son ofrecidos 99.66% en bicicleta.</span></h4><input type="hidden" id="size" />         
+     
+     </label></label></div></h4></form>
+
+     <p>
+
+      <div id="outputDiv"></div><div style="text-align: center;">
+      <a class="btn btn-primary" role="button" onclick="calculateDistances();">CALCULAR PRECIO</a>
+       
+
+     </div></p>
+
+    </div>
+   </div>
+
+   <div class="col-md-8">
+    <div id="map-canvas" style="height:400px; width:auto;"></div>
+   </div>
+
+  </div>
+
+ </div>
+
+ </div>
+ <!-- /.container-fluid -->
+
+
+
+<style>
+ #content-pane {
+  float: right;
+  width: 48%;
+  padding-left: 2%;
+ }
+ #outputDiv {
+  font-size: 18px;
+ }
+</style></div>
+<span style="font-size: x-small;">Tiempo promedio por servicio: 99 min. Desde su petición online. AREA DE COBERTURA: CDMX, HORARIO: Lun-Vie 09:00 18:00. En condiciones de lluvia o contingencias el tiempo de entrega aumenta.</span>
